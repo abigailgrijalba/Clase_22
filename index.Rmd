@@ -98,7 +98,7 @@ provincias_registros <-
 # Mapeo
 colores_registros <-
   colorNumeric(
-    palette = "YlGnBu",
+    palette = "BuPu",
     domain = provincias_registros$registros,
     na.color = "transparent"
   )
@@ -134,7 +134,7 @@ leaflet() %>%
       paste0("<a href ='", primates1$ocurrencyID, "'>Más infomación</a>"),
       sep = '<br/>'
     ),
-    clusterOptions = markerClusterOptions(),
+    clusterOptions = markerClusterOptions(), # Mapa agrupado (clustered)
     group = "Registros de primates"
   ) %>%  
   addLayersControl(
