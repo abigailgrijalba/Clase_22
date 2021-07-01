@@ -93,7 +93,65 @@ provincias_registros <-
   group_by(provincia.x) %>%
   summarize(registros = n())
 ```
+
+```{r mapa-provincias-registros}
+# Mapeo
+colores_registros <-
+  colorNumeric(
+    palette = "YlGnBu",
+    domain = provincias_registros$registros,
+    na.color = "transparent"
+  )
+
+leaflet() %>%
+  addTiles(group = "OSM") %>%
+   addPolygons(
+    data = provincias_registros,
+    fillColor = ~ colores_registros(provincias_registros$registros),
+    fillOpacity = 0.7,
+    stroke = TRUE,
+    color = "black",
+    weight = 1,
+    popup = paste(
+      paste("<strong>Provincia:</strong>", provincias_registros$provincia.x
+            ),
+      paste("<strong>Cantidad de registros:</strong>", provincias_registros$registros),
+      sep = '<br/>'
+    ),
+    group = "Provincias - registros"
+  ) %>%
+  addCircleMarkers(
+    data = primates1,
+    stroke = F,
+    radius = 2,
+    fillColor = "black",
+    fillOpacity = 1,
+    popup = paste (
+      primates1$species,
+      primates1$provincia,
+      primates1$canton,
+      primates1$eventDate,
+      paste0("<a href ='", primates1$ocurrencyID, "'>Más infomación</a>"),
+      sep = '<br/>'
+    ),
+    clusterOptions = markerClusterOptions(),
+    group = "Registros de primates"
+  ) %>%  
+  addLayersControl(
+    baseGroups = c("OpenStreetMap"),
+    overlayGroups = c("Provincias - registros", "Registros de primates")
+  ) %>%
+  addLegend(
+    position = "bottomleft",
+    pal = colores_registros,
+    values = provincias_registros$registros,
+    group = "Provincias - registros",
+    title = "Cantidad de registros"
+  )
+```
+
 <br/>
+
 
 ## Mapa de cantidad de especies por provincia
 
