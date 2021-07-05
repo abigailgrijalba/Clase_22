@@ -16,6 +16,7 @@ library(raster)
 library(leaflet)
 library(leaflet.extras)
 library(dplyr)
+library(leafem)
 ```
 <br/>
 
@@ -87,11 +88,13 @@ cat("Cantidad de registros despues de desartar los que no tienen provincia:", nr
 
 ## Mapa de cantidad de registros por provincia
 ```{r calculo-provincias-registros, message=FALSE, warning=FALSE}
+# Creacion de conjunto de datos con la cantidad de registros por provincias
 provincias_registros <-
   provincias1 %>%
   st_join(primates1) %>%
   group_by(provincia.x) %>%
-  summarize(registros = n())
+  summarize(registros = n_distinct(gbifID, na.rm = TRUE)) %>%
+  rename(provincia = provincia.x)
 ```
 
 ```{r mapa-provincias-registros}
@@ -152,14 +155,215 @@ leaflet() %>%
 
 <br/>
 
-
 ## Mapa de cantidad de especies por provincia
+```{r calculo-provincias-especies, message=FALSE, warning=FALSE}
+# Creacion de conjunto de datos con la cantidad de especies por provincia 
+provincias_especies <-
+  provincias1 %>%
+  st_join(primates1) %>%
+  group_by(provincia.x) %>%
+  summarize(especies = n_distinct(species, na.rm = TRUE)) %>%
+  rename(provincia = provincia.x)
+```
 
+```{r provincias-especies}
+# Mapeo
+colores_especies <-
+  colorNumeric(
+    palette = "YlOrRd",
+    domain = provincias_especies$especies,
+    na.color = "transparent"
+  )
+
+leaflet() %>%
+  addTiles(group = "OSM") %>%
+   addPolygons(
+    data = provincias_especies,
+    fillColor = ~ colores_especies(provincias_especies$especies),
+    fillOpacity = 0.7,
+    stroke = TRUE,
+    color = "black",
+    weight = 1,
+    popup = paste(
+      paste("<strong>Provincia:</strong>", provincias_especies$provincia
+            ),
+      paste("<strong>Cantidad de especies:</strong>", provincias_especies$especies),
+      sep = '<br/>'
+    ),
+    group = "Provincias - especies"
+  ) %>%
+  addCircleMarkers(
+    data = primates1,
+    stroke = F,
+    radius = 2,
+    fillColor = "black",
+    fillOpacity = 1,
+    popup = paste (
+      primates1$species,
+      primates1$provincia,
+      primates1$canton,
+      primates1$eventDate,
+      paste0("<a href ='", primates1$ocurrencyID, "'>Más infomación</a>"),
+      sep = '<br/>'
+    ),
+    clusterOptions = markerClusterOptions(), # Mapa agrupado (clustered)
+    group = "Registros de primates"
+  ) %>%  
+  addLayersControl(
+    baseGroups = c("OpenStreetMap"),
+    overlayGroups = c("Provincias - registros", "Registros de primates")
+  ) %>%
+  addLegend(
+    position = "bottomleft",
+    pal = colores_especies,
+    values = provincias_especies$especies,
+    group = "Provincias - especies",
+    title = "Cantidad de especies"
+  )
+```
+<br/>
+
+## Mapa de cantidad de especies por canton
+```{r calculo-cantones-especies, message=FALSE, warning=FALSE}
+# Creacion de conjunto de datos con la cantidad de especies por provincia 
+cantones_especies <-
+  cantones1 %>%
+  st_join(primates1) %>%
+  group_by(canton.x) %>%
+  summarize(especies = n_distinct(species, na.rm = TRUE)) %>%
+  rename(canton = canton.x)
+```
+
+```{r cantones-especies}
+# Mapeo
+colores_especies_canton <-
+  colorNumeric(
+    palette = "RdPu",
+    domain = cantones_especies$especies,
+    na.color = "transparent"
+  )
+
+leaflet() %>%
+  addTiles(group = "OSM") %>%
+   addPolygons(
+    data = cantones_especies,
+    fillColor = ~ colores_especies_canton(cantones_especies$especies),
+    fillOpacity = 0.7,
+    stroke = TRUE,
+    color = "black",
+    weight = 1,
+    popup = paste(
+      paste("<strong>Provincia:</strong>", cantones_especies$canton
+            ),
+      paste("<strong>Cantidad de especies:</strong>", cantones_especies$especies),
+      sep = '<br/>'
+    ),
+    group = "Cantones - especies"
+  ) %>%
+  addCircleMarkers(
+    data = primates1,
+    stroke = F,
+    radius = 2,
+    fillColor = "black",
+    fillOpacity = 1,
+    popup = paste (
+      primates1$species,
+      primates1$provincia,
+      primates1$canton,
+      primates1$eventDate,
+      paste0("<a href ='", primates1$ocurrencyID, "'>Más infomación</a>"),
+      sep = '<br/>'
+    ),
+    clusterOptions = markerClusterOptions(), # Mapa agrupado (clustered)
+    group = "Registros de primates"
+  ) %>% 
+  addHeatmap()
+  addLayersControl(
+    baseGroups = c("OpenStreetMap"),
+    overlayGroups = c("Cantones - registros", "Registros de primates")
+  ) %>%
+  addLegend(
+    position = "bottomleft",
+    pal = colores_especies_canton,
+    values = cantones_especies$especies,
+    group = "Cantones - especies",
+    title = "Cantidad de especies"
+  )
+```
+<br/>
+
+## Mapa de calor de registros
+```{r mapa-calor}
+# Mapeo
+leaflet() %>%
+  addTiles(group = "OSM"
+           ) %>%
+  addProviderTiles(providers$CartoDB.DarkMatter, group = "CartoDB.DarkMatter"
+                   )%>%
+  addHeatmap(data = primates1,
+             lng = ~decimalLongitude,
+             lat = ~decimalLatitude,
+             radius = 10,
+             blur = 20,
+             group = "Mapa de calor"
+             )  %>%
+  addCircleMarkers(
+    data = primates1,
+    stroke = F,
+    radius = 2,
+    fillColor = "black",
+    fillOpacity = 1,
+    popup = paste (
+      primates1$species,
+      primates1$provincia,
+      primates1$canton,
+      primates1$eventDate,
+      paste0("<a href ='", primates1$ocurrencyID, "'>Más infomación</a>"),
+      sep = '<br/>'
+    ),
+    group = "Registros de primates"
+  ) %>% 
+  addLayersControl(
+    baseGroups = c("CartoDB.DarkMatter", "OpenStreetMap"),
+    overlayGroups = c("Registros de primates", "Mapa de calor")
+  )
+```
 
 <br/>
 
-## Mapa agrupado (clustered)
+# Mapa con controles de busqueda en OSM, boton de reinicio y coordenadas
 
-<br/>
+```{r mapa-calor}
+# Mapeo
+leaflet() %>%
+  addTiles(group = "OSM") %>%
+  addCircleMarkers(
+    data = primates1,
+    stroke = F,
+    radius = 2,
+    fillColor = "black",
+    fillOpacity = 1,
+    popup = paste (
+      primates1$species,
+      primates1$provincia,
+      primates1$canton,
+      primates1$eventDate,
+      paste0("<a href ='", primates1$ocurrencyID, "'>Más infomación</a>"),
+      sep = '<br/>'
+    ),
+    clusterOptions = markerClusterOptions(), # Mapa agrupado (clustered)
+    group = "Registros de primates"
+  ) %>% 
+  addLayersControl(
+    baseGroups = c("OpenStreetMap"),
+    overlayGroups = c("Registros de primates")
+  ) %>% 
+  addResetMapButton() %>%
+  addSearchOSM() %>%
+  addScaleBar(position = "bottomleft", options = scaleBarOptions(imperial = FALSE)) %>%
+  addMouseCoordinates() %>%
+  addMiniMap(position = "bottomleft")
 
-## Mapa de calor
+
+```
+  addMouseCoordinates()
